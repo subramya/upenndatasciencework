@@ -1,0 +1,225 @@
+---
+title: " WDS HW 3"
+author:
+- Group Member Srivastava, Abhay 
+- Group Member Hong, Nathan
+- Group Member Kang, Christiana
+- Group Member O, Ella
+- Group Member Wang, Felix
+- Group Member Subramanian, Ramya
+date: 'Due: 10:00PM,  July 21, 2021'
+output:
+  html_document:
+    code_folding: show
+    highlight: haddock
+    number_sections: yes
+    theme: lumen
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: '4'
+  word_document:
+    toc: yes
+    toc_depth: '4'
+urlcolor: blue
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = "hide", fig.width=8, fig.height=4)
+options(scipen = 0, digits = 3)  # controls base R output
+# check if you have ISLR package, if not, install it
+if(!require('pacman')) {install.packages('pacman')}
+pacman::p_load(ISLR, readxl, tidyverse, magrittr, dplyr, ggplot2, leaps, car, contrast) 
+# ISLR will be installed and the that AUTO needed for this hw will be there
+```
+
+
+\pagebreak
+
+
+
+# Case study: Automobiles efficiency
+
+Are cars being built more efficient? Are Asian cars more efficient than cars built in America or Europe? To answer the questions we will use the `Auto` dataset from ISLR. The original dataset contains 408 observations about cars. It is similar to the CARS dataset that we use in our lectures. But it also collects information by years. To get the data, first install the package ISLR. The `Auto` dataset should be loaded automatically. The original data source is here: https://archive.ics.uci.edu/ml/datasets/auto+mpg
+
+Get familiar with this dataset first. A good data set should be well documented. Use the command `?ISLR::Auto` to view a description of the dataset. Please add the variable list with names, brief descriptions and units of the variables below. 
+
+```{r}
+data1 <- Auto
+str(data1)
+names(data1)
+summary(data1)
+```
+
+# EDA
+
+Explore the data first. 
+
+i. What is the range of `year`? Why is this important to know?
+
+```{r range}
+range(data1$year)
+```
+We need to know how recent/old the cars in the data set are.
+
+ii. Should `origin` be a continuous variable? Why or why not. In any case make `origin` a categorical variable.
+
+Origin should be a discontinuous variable because there are only 3 countries and no values in between.
+
+```{r categorical}
+data1$origin <- as.factor(data1$origin)
+```
+
+iii. Do you see any peculiarity in the data? 
+
+```{r peculiar}
+head(data1)
+summary(data1)
+```
+I do not see any peculiarity in the data.
+
+## What effect does `time` have on `MPG`?
+
+i. Show a scatter plot of `mpg` vs. `year` with the LS line imposed. Does the plot show a positive trend? 
+
+```{r scatterplot}
+plot <- ggplot(data1, aes(x= year, y=mpg)) + 
+  geom_point() +
+  geom_smooth(method = "lm")
+plot
+```
+
+Yes it has a positive trend.
+
+ii. Now run a simple regression of `mpg` vs. `year` and report R's `summary` output. Is `year` a significant variable at the .05 level? State what effect `year` has on `mpg`, if any, according to this model. 
+
+```{r }
+regression <- lm(mpg ~ year, data1)
+summary(regression)
+```
+Year is a significant variable at the .05 level because it has 3 stars (.001 level significance). With each unit increase in year, the mpg increased by 1.23.
+
+iii. Add `horsepower` on top of the variable `year` to your linear model. Is `year` still a significant variable at the .05 level? Give a precise interpretation of the `year`'s effect found here. 
+
+```{r regression}
+regression <- lm(mpg ~ year + horsepower, data1)
+summary(regression)
+```
+Year is still a significant variable at the .05 level. With each unit increase in year, the mpg increases by .65, controlling for horsepower.
+
+iv. The two 95% CI's for the coefficient of year differ among ii. and iii. How would you explain the difference to a non-statistician?
+
+Since iii holds horsepower as a constant, meaning we are only measuring the years effect on mpg without horsepower, while ii includes it.
+
+v. Create a model with interaction by fitting `lm(mpg ~ year * horsepower)`. Is the interaction effect significant at .05 level? Explain the year effect (if any). 
+
+```{r }
+regression <- lm(mpg ~ year * horsepower, data1)
+summary(regression)
+```
+Yes the interaction is significant at the .05 level. With each increasing year, the mpg increases by 2.19.
+
+<!-- ## Categorical predictors -->
+
+Remember that the same variable can play different roles! Take a quick look at the variable `cylinders`, and try to use this variable in the following analyses wisely. We all agree that a larger number of cylinders will lower mpg. However, we can interpret `cylinders` as either a continuous (numeric) variable or a categorical variable.
+
+<!-- a) Fit a model that treats `cylinders` as a continuous/numeric variable. Is `cylinders` significant at the 0.01 level? What effect does `cylinders` play in this model? -->
+
+<!-- b) Fit a model that treats `cylinders` as a categorical/factor. Is `cylinders` significant at the .01 level? What is the effect of `cylinders` in this model? Describe the `cylinders` effect over `mpg`.  -->
+
+<!-- c) What are the fundamental differences between treating `cylinders` as a continuous and categorical variable in your models?  -->
+
+```{r cylinders}
+regression <- lm(mpg ~ cylinders, data1)
+data1$cylinders <- factor(data1$cylinders)
+Anova(regression)
+summary(regression)
+```
+
+a) Cylinders is significant at the .01 level. The mpg decreases by 3.558 for every one cylinder added.
+
+b) Cylinders is significant at the .01 level. For cylinders4, compared to 3, it is 8.734 more mpg on average. For cylinders5, compared to 3, it is 6.817 more mpg on average. For cylinders6, compared to 3, it is 0.577 less mpg on average. For cylinders8, compared to 3, it is 5.587 less mpg on average.
+
+c) There is not that much difference in regards to significance when it comes to categorical versus continuous. There is a difference when it comes to the effect of adding one more cylinder on the mpg, due to the fact that when we treat cylinders as a categorical variable, we are comparing to cylinders3. Whereas if it is a numerical value, we can plainly see the effect on the mpg.
+
+## Bring origin into the model
+
+i. Do mpg's differ on average among different origin? Fit a linear model with mpg vs. origin. Report the output. 
+
+```{r linear model}
+fit1 <- lm(mpg ~ origin, data = data1)
+summary(fit1)
+data1$origin <- factor(data1$origin, levels = c("2", "1", "3"))
+data1$origin
+fit1 <- lm(mpg ~ origin, data = data1)
+summary(fit1)
+```
+The mpg's do differ on average among the origins. average mpg = 27.603 - 7.569(origin1) + 2.848(origin3)
+
+a) Are mpg's on average different among three regions? Perform a test at .01 level. When you reject the null hypothesis, what have you proved? 
+The mpg's do differ on average among the origins. There is a significant difference between origins at the .01 level, therefore we reject the null hypothesis that origin1 = origin2 and origin2 = origin3.
+
+b) Describe on average which origin has the highest mpg and what it is. Which origin has the smallest mpg on average and what is it?
+
+```{r mean}
+data1 %>%
+group_by(origin) %>%
+  summarise(
+    mean = mean(mpg),
+    n = n()
+  )
+```
+Origin3 has the highest mpg of 30.5 and origin1 has the smallest mpg of 20.0.
+
+c) Are Asian cars more efficient than American cars? Produce a 95% CI's for the difference. 
+The confidence interval is (8.79, 12.04).
+
+```{r confidence interval}
+data1$origin <- factor(data1$origin, levels = c("1", "2", "3"))
+fit1 <- lm(mpg ~ origin, data = data1)
+confint(fit1, level = 0.95)
+```
+
+
+ii. Try to build a final model which includes `year` and `origin`. 
+
+```{r}
+data1 <- Auto
+data1$origin <- factor(data1$origin, levels = c("3", "1", "2"))
+fit.fin<-lm(mpg~year+origin+cylinders+horsepower+displacement+weight+acceleration,data=data1)
+anova(fit.fin)
+fit.fin <- update(fit.fin, .~. - acceleration)
+anova(fit.fin)
+fit.fin <- update(fit.fin, .~. - displacement)
+anova(fit.fin)
+summary(fit.fin)
+plot(fit.fin, 1, pch=16) 
+abline(h=0, col="blue", lwd=3)
+plot(fit.fin, 2)
+```
+
+
+a) Describe the final model. Include diagnostic plots with particular focus on the model residuals and diagnoses.
+Based on the Q-Q plot, the model looks approximately normal and has a tail to the right.The residual plot looks semi-random, which means the linear model is a good fit.
+b) Describe the year effect and origin effect in this final model.
+With increasing in year, the mpg increases by 0.758.For origin 2, it increases 2.04 mpg in comparison to origin 1. For origin 3, it increases 2.33 mpg in comparison to origin 1.
+Are cars being built more efficiently over time? Are Asian cars more efficient than cars built in America or Europe?
+The cars are being built more efficiently over time because the year's coefficient is positive (0.758). Asian cars are more efficient than cars built in America because the origin 3 is positive when it is in compared to origin 1. Based on the model, there is not a significant difference between Asian and European cars, but there is a significant difference between Asian and American cars.
+## Prediction
+
+Use the final model to predict the `mpg` of the following car: A red car built in the US in 1983 that is 180 inches long, has eight cylinders, displaces 350 cu. inches, weighs 4000 pounds, and has a horsepower of 260. Also give a 95% CI for your prediction.
+
+The 95% confidence interval is (18.3,23.5).
+```{r}
+red <- data.frame(cylinders=c(8),weight=c(4000),horsepower=c(260),year=c(83),origin="1")
+predict(fit.fin, red, interval="confidence", se.fit=TRUE, level=.95)
+```
+
+
+
+
+
